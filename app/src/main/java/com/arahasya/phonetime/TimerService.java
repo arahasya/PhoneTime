@@ -1,18 +1,17 @@
 package com.arahasya.phonetime;
 
 import android.annotation.SuppressLint;
-import android.app.KeyguardManager;
 import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.SystemClock;
 import android.util.Log;
-import android.view.GestureDetector;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -26,42 +25,39 @@ public class TimerService extends Service {
     private WindowManager windowManager;
     WindowManager.LayoutParams params, params1;
     Chronometer chronometer;
-    ImageView deleteView;
+    ImageView deleteView,box;
     BroadcastReceiver mReceiver;
+    long timeWhenStopped;
+    IntentFilter filter;
+
+
+    int LAYOUT_FLAG;
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
     public void onCreate() {
         super.onCreate();
 
-
-
-        IntentFilter filter = new IntentFilter(Intent.ACTION_SCREEN_ON);
+        filter = new IntentFilter(Intent.ACTION_SCREEN_ON);
         filter.addAction(Intent.ACTION_SCREEN_OFF);
         mReceiver = new ScreenUnlockReceiver();
 
         deleteView = new ImageView(this);
 
-        deleteView.setImageResource(R.drawable.ic_cancel
-        );
+        deleteView.setImageResource(R.drawable.ic_cancel);
 
         chronometer = new Chronometer(this);
         chronometer.setTextSize(35);
 
-        chronometer.setBackgroundColor(getResources().getColor(android.R.color.holo_green_dark));
+
+        chronometer.setBackgroundResource(R.drawable.ic_green_box);
+
+
+        //chronometer.setBackgroundColor(getResources().getColor(android.R.color.holo_green_light));
         //chronometer.setTextColor(getResources().getColor(android.R.color.holo_green_dark));
-       // chronometer.start();
-        KeyguardManager myKM = (KeyguardManager) getApplicationContext().getSystemService(Context.KEYGUARD_SERVICE);
-        if( myKM.inKeyguardRestrictedInputMode()) {
+        chronometer.setBase(SystemClock.elapsedRealtime());
+        chronometer.start();
 
-            chronometer.stop();
-        } else {
-            //it is not locked
-            chronometer.start();
-        }
-
-
-        int LAYOUT_FLAG;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             LAYOUT_FLAG = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
         } else {
@@ -72,18 +68,9 @@ public class TimerService extends Service {
 
         // chatHead = new ImageView(this);
         // chatHead.setImageResource(R.mipmap.ic_launcher);
+        params = setParams();
+        Log.i("Params", String.valueOf(params));
 
-        params = new WindowManager.LayoutParams(
-                WindowManager.LayoutParams.WRAP_CONTENT,
-                WindowManager.LayoutParams.WRAP_CONTENT,
-                LAYOUT_FLAG,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-
-                PixelFormat.TRANSLUCENT);
-
-        params.gravity = Gravity.TOP | Gravity.START;
-        params.x = 0;
-        params.y = 100;
 
         params1 = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
@@ -93,8 +80,7 @@ public class TimerService extends Service {
 
                 PixelFormat.TRANSLUCENT);
         params1.height = 200;
-        params1.width = 200
-        ;
+        params1.width = 200;
 
         params1.gravity = Gravity.CENTER_HORIZONTAL | Gravity.BOTTOM;
         params1.y = Gravity.BOTTOM - 10;
@@ -102,9 +88,6 @@ public class TimerService extends Service {
 
         windowManager.addView(deleteView, params1);
         deleteView.setVisibility(View.INVISIBLE);
-
-
-        // GestureDetector gestureDetector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener());
 
 
         //this code is for dragging the chat head
@@ -118,9 +101,23 @@ public class TimerService extends Service {
 
             @Override
             public boolean onTouch(View v, MotionEvent event) {
+
                 deleteView.setVisibility(View.VISIBLE);
                 if (isViewOverlapping(deleteView, chronometer)) {
+                    // Log.i("Params", String.valueOf(params));
+                    params = setParams();
                     chronometer.setVisibility(View.INVISIBLE);
+
+                    windowManager.updateViewLayout(chronometer, params);
+                   // Log.i("Params", String.valueOf(params));
+                    final Handler handler = new Handler();
+                    handler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            //Do something after 100ms
+                            chronometer.setVisibility(View.VISIBLE);
+                        }
+                    }, 60000);
                 }
 
                 //windowManager.removeView(chronometer);
@@ -156,6 +153,9 @@ public class TimerService extends Service {
         //windowManager.addView(textTimer,params);
         windowManager.addView(chronometer, params);
 
+
+
+
     }
 
     private boolean isViewOverlapping(View firstView, View secondView) {
@@ -176,9 +176,22 @@ public class TimerService extends Service {
 
     @Override
     public void onDestroy() {
-        super.onDestroy();
-        if (chronometer != null)
+
+
+        try {
+            if (mReceiver != null)
+                unregisterReceiver(mReceiver);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+
+        if (chronometer != null) {
             windowManager.removeView(chronometer);
+        }
+
+        super.onDestroy();
+
 
     }
 
@@ -190,6 +203,7 @@ public class TimerService extends Service {
 
 
     public int onStartCommand(Intent intent, int flags, int startId) {
+        registerReceiver(mReceiver, filter);
         return super.onStartCommand(intent, flags, startId);
     }
 
@@ -202,18 +216,43 @@ public class TimerService extends Service {
             String action = intent.getAction();
             if (Intent.ACTION_SCREEN_ON.equals(action)) {
                 // start the service
+                //  Log.i("TIME", String.valueOf(SystemClock.elapsed));
+
+                long elapsedMillis = (SystemClock.elapsedRealtime() - chronometer.getBase());
+                if(elapsedMillis>7200000){
+                    chronometer.setBackgroundResource(R.drawable.ic_red_box);
+                }else if(elapsedMillis>3600000){
+
+                    chronometer.setBackgroundResource(R.drawable.ic_orange_box);
+                }
+                chronometer.setBase(SystemClock.elapsedRealtime() + timeWhenStopped);
                 chronometer.start();
-                Log.i("SCREEN","ON");
+
+                Log.i("SCREEN", "ON");
             } else if (Intent.ACTION_SCREEN_OFF.equals(action)) {
-                // stop the service
+
                 chronometer.stop();
-                Log.i("SCREEN","off");
+                timeWhenStopped = chronometer.getBase() - SystemClock.elapsedRealtime();
+                Log.i("SCREEN", "off");
             }
         }
 
 
+    }
 
+    public WindowManager.LayoutParams setParams() {
+        params = new WindowManager.LayoutParams(
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                LAYOUT_FLAG,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
 
+                PixelFormat.TRANSLUCENT);
+
+        params.gravity = Gravity.TOP | Gravity.START;
+        params.x = 0;
+        params.y = 100;
+        return params;
     }
 
 

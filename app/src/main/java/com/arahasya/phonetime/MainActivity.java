@@ -1,31 +1,24 @@
 package com.arahasya.phonetime;
 
-import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
-import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
-import android.support.v4.app.NotificationCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Chronometer;
 
 
 public class MainActivity extends AppCompatActivity {
 
 
-    NotificationManager mNotificationManager;
+   // NotificationManager mNotificationManager;
     private int REQUEST_CODE = 5463;
     //final int NOTIFICATION_ID = 101;
-    Button button;
+    Button button_start,button_stop;
+    Chronometer chronometer;
 
 
 
@@ -33,18 +26,30 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        chronometer = new Chronometer(this);
 
 
 
-        button = findViewById(R.id.showNotif);
-        button.setOnClickListener(new View.OnClickListener() {
+        button_start = findViewById(R.id.startC);
+        button_start.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                showNotification();
+                //showNotification();
+                createFloatView();
+            }
+        });
+
+
+        button_stop = findViewById(R.id.stopC);
+        button_stop.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                //showNotification();
+                stopService(new Intent(MainActivity.this,TimerService.class));
             }
         });
        // textTimer = (TextView) findViewById(R.id.timer);
-        createFloatView();
+       // createFloatView();
        // startClock();
 
 
@@ -84,18 +89,20 @@ public class MainActivity extends AppCompatActivity {
         startService(new Intent(MainActivity.this, TimerService.class));
 
     }
-
+/*
     private void showNotification() {
 
+        //chronometer.setBase(SystemClock.currentThreadTimeMillis());
+        chronometer.start();
 
         NotificationCompat.Builder mBuilder =
                 new NotificationCompat.Builder(getApplicationContext(), "notify_001");
         Intent ii = new Intent(getApplicationContext(), MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, ii, 0);
 
-        NotificationCompat.BigTextStyle bigText = new NotificationCompat.BigTextStyle();
+        final NotificationCompat.BigTextStyle bigText = new NotificationCompat.BigTextStyle();
         bigText.bigText("skncfs");
-        bigText.setBigContentTitle("Today's Bible Verse");
+        bigText.setBigContentTitle(""+chronometer.getText().toString());
         bigText.setSummaryText("Text in detail");
 
         mBuilder.setContentIntent(pendingIntent);
@@ -105,6 +112,8 @@ public class MainActivity extends AppCompatActivity {
         mBuilder.setPriority(Notification.PRIORITY_MAX);
         mBuilder.setStyle(bigText);
         mBuilder.setOngoing(true);
+        //mBuilder.setWhen(chronometer.getBase());
+        mBuilder.setUsesChronometer(true);
 
         mNotificationManager =
                 (NotificationManager) getApplicationContext().getSystemService(Context.NOTIFICATION_SERVICE);
@@ -121,7 +130,7 @@ public class MainActivity extends AppCompatActivity {
         mNotificationManager.notify(0, mBuilder.build());
     }
 
-
+*/
     @Override
     public void onDestroy() {
 
